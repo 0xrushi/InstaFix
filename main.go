@@ -93,6 +93,7 @@ func main() {
 
 	r.Get("/images/{postID}/{mediaNum}", handlers.Images)
 	r.Get("/videos/{postID}/{mediaNum}", handlers.Videos)
+	r.Get("/download/{postID}", handlers.Download)
 	r.Get("/grid/{postID}", handlers.Grid)
 	r.Get("/oembed", handlers.OEmbed)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {

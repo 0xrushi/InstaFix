@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	scraper "instafix/handlers/scraper"
 	"instafix/utils"
 	"instafix/views"
@@ -68,6 +69,9 @@ func Embed(w http.ResponseWriter, r *http.Request) {
 		} else {
 			mediaNumParams = "0"
 		}
+	}
+	if writeMediaLinkRange(w, r, mediaNumParams) {
+		return
 	}
 	mediaNum, err := strconv.Atoi(mediaNumParams)
 	if err != nil {
@@ -145,11 +149,6 @@ func Embed(w http.ResponseWriter, r *http.Request) {
 	typename := item.Medias[max(1, mediaNum)-1].TypeName
 	isImage := strings.Contains(typename, "Image") || strings.Contains(typename, "StoryVideo")
 	switch {
-	case mediaNum == 0 && isImage && len(item.Medias) > 1:
-		viewsData.Card = "summary_large_image"
-		sb.WriteString("/grid/")
-		sb.WriteString(postID)
-		viewsData.ImageURL = sb.String()
 	case isImage:
 		viewsData.Card = "summary_large_image"
 		sb.WriteString("/images/")
@@ -177,4 +176,31 @@ func Embed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	views.Embed(viewsData, w)
+}
+
+func writeMediaLinkRange(w http.ResponseWriter, r *http.Request, value string) bool {
+	startText, endText, ok := strings.Cut(value, "to")
+	if !ok || startText == "" || endText == "" {
+		return false
+	}
+	start, startErr := strconv.Atoi(startText)
+	end, endErr := strconv.Atoi(endText)
+	if startErr != nil || endErr != nil || start < 1 || end < start || end-start >= 100 {
+		return false
+	}
+
+	scheme := r.Header.Get("X-Forwarded-Proto")
+	if scheme != "http" && scheme != "https" {
+		scheme = "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+	}
+	basePath := strings.TrimSuffix(r.URL.Path, "/"+value)
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	for mediaNumber := start; mediaNumber <= end; mediaNumber++ {
+		fmt.Fprintf(w, "%s://%s%s/%d\n", scheme, r.Host, basePath, mediaNumber)
+	}
+	return true
 }

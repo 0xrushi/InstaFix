@@ -29,6 +29,44 @@ Add `g.dd` before `instagram.com` to show only the author and the media, without
 3. Run `go build`.
 4. Run `./instafix`.
 
+## Tests
+
+Run the offline test suite with:
+
+```sh
+go test ./...
+```
+
+The live Instagram integration tests are opt-in because they require network
+access and depend on Instagram's public responses:
+
+```sh
+go test -tags=integration ./handlers/scraper -run TestInstagram -v
+```
+
+### Download a carousel
+
+Download every image and video from one post as a ZIP archive:
+
+```text
+http://localhost:3000/download/DcKRfwLmrmb
+```
+
+Carousel embeds show the first item by default. Add an item number to preview a
+specific slide:
+
+```text
+http://localhost:3000/p/DcKRfwLmrmb
+http://localhost:3000/p/DcKRfwLmrmb/2
+```
+
+Append a range such as `/1to12` to print copyable absolute links for every
+number in that range:
+
+```text
+http://localhost:3000/p/DcKRfwLmrmb/1to12
+```
+
 ## Deploy InstaFix yourself (cloud)
 
 1. Pull the latest container image from GHCR and run it.  

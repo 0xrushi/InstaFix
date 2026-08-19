@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -90,6 +91,9 @@ func GetData(postID string) (*InstaData, error) {
 
 	// Successfully parsed from cache
 	if len(i.Medias) != 0 {
+		for index := range i.Medias {
+			normalizeMediaType(&i.Medias[index], false)
+		}
 		return i, nil
 	}
 
@@ -309,13 +313,16 @@ func (i *InstaData) ScrapeData() error {
 			m = m.Get("node")
 		}
 		mediaURL := m.Get("video_url")
-		if !mediaURL.Exists() {
+		isVideo := mediaURL.Exists()
+		if !isVideo {
 			mediaURL = m.Get("display_url")
 		}
-		i.Medias = append(i.Medias, Media{
+		parsedMedia := Media{
 			TypeName: m.Get("__typename").String(),
 			URL:      mediaURL.String(),
-		})
+		}
+		normalizeMediaType(&parsedMedia, isVideo)
+		i.Medias = append(i.Medias, parsedMedia)
 	}
 
 	// Failed to scrape from Embed
@@ -323,6 +330,25 @@ func (i *InstaData) ScrapeData() error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func normalizeMediaType(media *Media, isVideo bool) {
+	if media.TypeName != "" {
+		return
+	}
+	if isVideo {
+		media.TypeName = "GraphVideo"
+		return
+	}
+
+	if parsed, err := url.Parse(media.URL); err == nil {
+		switch strings.ToLower(path.Ext(parsed.Path)) {
+		case ".jpg", ".jpeg", ".png", ".webp":
+			media.TypeName = "GraphImage"
+		case ".mp4", ".m4v", ".mov":
+			media.TypeName = "GraphVideo"
+		}
+	}
 }
 
 // Taken from https://github.com/PuerkitoBio/goquery
